@@ -1,0 +1,2 @@
+import {user,settle,state,sameOrigin} from '@/lib/store';
+export async function POST(request:Request){if(!sameOrigin(request))return Response.json({error:'Invalid request origin.'},{status:403});try{const owner=await user();const {mode}=await request.json() as {mode:string};if(!['demo','live'].includes(mode))return Response.json({error:'Invalid mode.'},{status:400});const count=await settle(mode,owner);return Response.json({count,...await state(mode,owner)});}catch{return Response.json({error:'Results are temporarily unavailable. Try again shortly.'},{status:503});}}

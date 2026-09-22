@@ -1,0 +1,1 @@
+export function resultFor(market:string,side:number,point:number|null,away:number,home:number){const margin=market==='moneyline'?(side===0?away-home:home-away):market==='spread'?(side===0?away-home:home-away)+(point??0):(side===0?away+home-(point??0):(point??0)-away-home);return margin===0?'push':margin>0?'won':'lost';}

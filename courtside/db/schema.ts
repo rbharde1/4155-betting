@@ -1,0 +1,4 @@
+import {integer,real,sqliteTable,text,uniqueIndex,index} from 'drizzle-orm/sqlite-core';
+export const picks=sqliteTable('picks',{
+ id:text('id').primaryKey(),owner:text('owner').notNull(),gameId:text('game_id').notNull(),mode:text('mode').notNull(),market:text('market').notNull(),side:integer('side').notNull(),label:text('label').notNull(),matchup:text('matchup').notNull(),odds:integer('odds').notNull(),point:real('point'),stakeCents:integer('stake_cents').notNull(),profitCents:integer('profit_cents').notNull(),result:text('result').notNull().default('pending'),source:text('source').notNull(),fetchedAt:text('fetched_at').notNull(),start:text('start').notNull(),createdAt:text('created_at').notNull(),settledAt:text('settled_at'),score:text('score'),legs:text('legs')
+},t=>[uniqueIndex('one_market_per_game').on(t.owner,t.mode,t.gameId,t.market),index('picks_owner_mode').on(t.owner,t.mode),index('picks_mode_game').on(t.mode,t.gameId)]);
