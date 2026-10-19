@@ -15,6 +15,13 @@
       "when": 1790095751418,
       "tag": "0001_cynical_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792373196191,
+      "tag": "0002_tense_skrulls",
+      "breakpoints": true
     }
   ]
 }
