@@ -34,3 +34,12 @@ assert.deepEqual(gradeParlay(1000,legs('won','push','void')),{result:'won',profi
 assert.deepEqual(gradeParlay(1000,legs('push','void')),{result:'push',profitCents:0});
 assert.deepEqual(gradeParlay(1000,legs('push','pending')),{result:'pending',profitCents:909});
 console.log('PASS: combined parlay pricing, cent rounding, pending/loss/win settlement, push and void recalculation, full refund.');
+const {gradeProp,normalizeProps,practiceProps}=await module('lib/player-props.ts');
+assert.equal(gradeProp(25,24.5,0),'won');assert.equal(gradeProp(24,24.5,1),'won');assert.equal(gradeProp(8,8,0),'push');assert.equal(gradeProp(0,1.5,0),'lost');
+assert.equal(practiceProps(games[0]).length,18);
+const p={id:1,game_id:99,player_id:42,vendor:'draftkings',prop_type:'assists',line_value:'6.5',market:{type:'over_under',over_odds:-110,under_odds:100},updated_at:new Date().toISOString()};
+const players=[{id:42,first_name:'Test',last_name:'Player',team:{abbreviation:'BOS'}}];
+assert.equal(normalizeProps([p],players,99).length,1);
+for(const invalid of [{...p,game_id:100},{...p,prop_type:'points_1q'},{...p,line_value:null},{...p,market:{type:'milestone',over_odds:-110,under_odds:100}},{...p,market:{type:'over_under',over_odds:0,under_odds:100}}])assert.equal(normalizeProps([invalid],players,99).length,0);
+assert.equal(normalizeProps([p],[],99).length,0);
+console.log('PASS: player prop over/under/push grading, practice markets, provider game identity and invalid market rejection.');
