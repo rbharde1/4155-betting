@@ -1,0 +1,2 @@
+# Copy to .dev.vars and set a key with NBA player-props access. Never commit .dev.vars.
+BALLDONTLIE_API_KEY=

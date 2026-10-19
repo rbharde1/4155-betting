@@ -53,3 +53,6 @@ __pycache__/
 *.tsbuildinfo
 
 .idea/
+
+.dev.vars*
+!.dev.vars.example

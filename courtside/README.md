@@ -54,3 +54,19 @@ WebMCP exposes `stage_paper_pick`, which only stages a selection and never submi
 ## Validation
 
 Run `npx tsc --noEmit` and `npm run build`. End-to-end API validation covered all three markets, odds tampering rejection, duplicate rejection, invalid stakes, concurrent balance protection, settlement idempotency, persistence, and separation between live and practice. See `tools/check_api.py` and `tools/check_parlay_api.py` (empty local practice database only). `node tools/check_domain.mjs` checks grading, parlay push/void adjustments, and payout rounding. Parlay integration also checks mixed markets, order-independent duplicates, and shared bankroll protection across concurrent single/parlay submissions.
+
+### Player props
+
+Click a game card (or focus it and press Enter) to open Points, Assists, and Rebounds over/under markets. Player picks are singles (not parlay legs), share the mode's bankroll, and appear in My predictions. One pick per player/stat/game is allowed, including alternate lines. Exact ties refund the stake. Confirmed zero participation voids a pick; unavailable or unconfirmed statistics remain pending. Practice uses fictional position-based players and deterministic simulated results.
+
+Live player odds use DraftKings through BALLDONTLIE, independently of the ESPN team-market feed. Copy `.dev.vars.example` to `.dev.vars`, set `BALLDONTLIE_API_KEY` privately with an account that has player-props and stats access, and restart `npm run dev`. Cloudflare loads this as a server-only binding. For deployed environments configure the same name as a Worker secret. Never use a `VITE_` or `NEXT_PUBLIC_` prefix for this key. The Python research script still reads `.env.local`; that file does not configure this Worker binding.
+
+Apply the new database migration after building:
+
+```sh
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_tense_skrulls.sql
+```
+
+Live odds are re-fetched on submission; changed lines are rejected. Games are matched by scheduled date and both team abbreviations because ESPN and BALLDONTLIE IDs differ. Player stats settle only after the provider reports a final game. Live provider behavior requires verification with an entitled API key; missing credentials never substitute practice odds.
+
+Checks: `node tools/check_domain.mjs`, `npx tsc --noEmit`, `npm run build`. `python3 tools/check_player_props.py` additionally tests a running local preview with an empty practice record and writes `/private/tmp/courtside-prop-cleanup.sql` to remove only its generated test picks afterward.
