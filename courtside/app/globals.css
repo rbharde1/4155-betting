@@ -103,3 +103,20 @@
 
 /* Parlay tickets */
 .bet-type-toolbar{display:flex;align-items:center;gap:16px;margin:8px 0 18px}.bet-type-toolbar>span{font-size:11px;color:#909a94}.parlay-intro{display:flex;align-items:center;gap:10px;margin-bottom:16px;color:#ccf981}.parlay-intro strong{font-size:13px}.parlay-intro p{font-size:11px;color:#8c9791;margin:4px 0 0}.parlay-empty{padding:18px 0 26px;font-size:13px;line-height:1.7;color:#939d97}.parlay-leg{gap:10px;align-items:flex-start!important;padding-bottom:14px;margin-bottom:14px!important}.parlay-leg>div{flex:1;min-width:0}.parlay-leg h3{font-size:13px!important;line-height:1.6}.leg-number{display:grid;place-items:center;flex-shrink:0;width:22px;height:22px;border:1px solid #384331;border-radius:50%;font-size:10px;color:#cafa80;margin-top:4px}.combined-odds{display:flex;justify-content:space-between;align-items:center;padding:4px 0 20px;font-size:12px}.combined-odds strong{font-size:23px;color:#d0f999;text-align:right}.combined-odds small{display:block;font-size:10px;color:#96a18f;font-weight:400}.parlay-pricing{font-size:10px;line-height:1.6;color:#879181;margin-top:14px;padding-top:12px;border-top:1px solid #29322b}.history-legs{margin-top:12px;min-width:250px}.history-legs>div{display:flex;gap:9px;margin-bottom:12px}.history-legs>div>span{color:#b9d998;font-size:10px;padding-top:2px}.history-legs strong{font-size:11px!important}.history-legs small{font-size:10px!important}@media(max-width:600px){.bet-type-toolbar{gap:10px}.bet-type-toolbar>span{font-size:10px}}
+
+/* Game-specific player markets */
+.game-card { cursor: pointer; }
+.player-props-dialog { width: calc(100vw - 24px); max-width: 760px !important; max-height: 90dvh; overflow-y: auto; background: #141b19; color: #edf2ef; border: 1px solid #34443c; padding: 24px; }
+.player-props-dialog [data-slot="dialog-title"] { font-size: 28px; }
+.prop-tabs { width: 100%; }
+.prop-tabs button { flex: 1; }
+.prop-source { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; color: #a0afa6; }
+.prop-row { display: grid; grid-template-columns: minmax(0,1fr) 92px 92px; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #2b3730; }
+.prop-row strong { display: block; font-size: 14px; }
+.prop-row small { display: block; color: #9bab9f; font-size: 11px; }
+.prop-row .odds-button { min-width: 0; width: 100%; }
+.prop-labels { font-size: 10px; letter-spacing: 1px; color: #a0afa6; }
+.prop-labels span:not(:first-child) { text-align: center; }
+.prop-ticket { display: grid; gap: 12px; padding: 18px; background: #1c2922; border: 1px solid #3e5d47; border-radius: 10px; }
+.prop-ticket label,.prop-ticket p { font-size: 12px; }
+@media(max-width:480px) { .player-props-dialog { padding: 18px; } .prop-row { grid-template-columns: minmax(0,1fr) 70px 70px; gap: 8px; } .prop-row strong { font-size: 12px; } }
