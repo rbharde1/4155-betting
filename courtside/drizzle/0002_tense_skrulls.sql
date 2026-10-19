@@ -1,0 +1,1 @@
+ALTER TABLE `picks` ADD `player_prop` text;
