@@ -116,29 +116,18 @@ def save_json(data, filename):
 
 def main():
 
-    print("Fetching NBA games from 2024-25 and 2025-26...\n")
-
-    # Retrieve all games
+    # Fetch NBA games
+    print("\nFetching NBA games from 2024-25 and 2025-26...")
     games = get_games()
 
     # Display total games collected
     print(f"\nTotal games collected: {len(games)}")
 
-    # Display first five games
-    print("\nFirst five games:")
-
-    for game in games[:5]:
-        print(
-            game["id"],
-            game["date"],
-            game["visitor_team"]["abbreviation"],
-            "vs",
-            game["home_team"]["abbreviation"]
-        )
-
     # Save raw game data
     save_json(games, "nba_games_2024_2026.json")
 
+    print("\nNBA game collection completed successfully!")
 
 if __name__ == "__main__":
+
     main()

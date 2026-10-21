@@ -63,37 +63,96 @@ def get_player_stats(game_id):
 
     return data["data"]
 
+def collect_all_player_stats(game_ids):
+    """
+    Retrieve player statistics for all NBA games.
+    Save progress and allow collection to resume.
+    """
+
+    output_file = RAW_DATA_DIR / "nba_player_stats_2024_2026.json"
+
+    all_stats = []
+    completed_games = set()
+
+    if output_file.exists():
+        with open(output_file, "r", encoding="utf-8") as file:
+            all_stats = json.load(file)
+
+        completed_games = {
+            stat["game"]["id"]
+            for stat in all_stats
+        }
+
+        print(f"Resuming with {len(completed_games)} completed games.")
+
+    for index, game_id in enumerate(game_ids,start=1):
+
+        if game_id in completed_games:
+            continue
+
+        try:
+            stats = get_player_stats(game_id)
+
+            if not stats:
+                print(f"No player statistics found for game {game_id}")
+                time.sleep(1.5)
+                continue
+
+            all_stats.extend(stats)
+            completed_games.add(game_id)
+
+            print(
+                f"Game {index}/{len(game_ids)} | "
+                f"Player records: {len(all_stats)}"
+            )
+
+            if len(completed_games) % 25 == 0:
+                with open(output_file,"w",encoding="utf-8") as file:
+                    json.dump(all_stats, file)
+
+                print("Progress Saved!")
+
+            time.sleep(1.5)
+
+        except requests.exceptions.RequestException as error:
+            print(f"Error retrieving game {game_id}: {error}")
+
+            #Save Progress before stop
+            with open(output_file, "w", encoding="utf-8") as file:
+                json.dump(all_stats, file)
+
+            print("Progress saved before stop")
+            break
+
+
+    with open(output_file, "w", encoding="utf-8") as file:
+        json.dump(all_stats, file)
+
+    return all_stats
+
+
+
+
 
     
 
 
 def main():
 
+    # Load all game IDs from our JSON file
     game_ids = load_game_ids()
 
     print(f"Total game IDs loaded: {len(game_ids)}")
 
-    # Test with the first game
-    test_game_id = game_ids[0]
+    print("\nStarting player statistics collection...\n")
 
-    print(f"\nFetching player stats for game {test_game_id}...")
+    # Retrieve player statistics for all games
+    all_stats = collect_all_player_stats(game_ids)
 
-    player_stats = get_player_stats(test_game_id)
+    # Display total records collected
+    print(f"\nTotal player records collected: {len(all_stats)}")
 
-    print(f"\nPlayer records collected: {len(player_stats)}")
-
-    # Display the first five players
-    for stat in player_stats[:5]:
-
-        player = stat["player"]
-
-        print(
-            player["first_name"],
-            player["last_name"],
-            "| PTS:", stat["pts"],
-            "| REB:", stat["reb"],
-            "| AST:", stat["ast"]
-        )
+    print("\nPlayer statistics saved to JSON!")
 
 
 if __name__ == "__main__":

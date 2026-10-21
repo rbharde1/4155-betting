@@ -115,34 +115,25 @@ def save_cleaned_data(df):
 
 
 def main():
-
+    # Load raw player statistics
     player_stats = load_player_stats()
 
-    print(f"Total player records loaded: {len(player_stats)}")
+    print(f"\nTotal player records loaded: {len(player_stats)}")
 
+    # Clean player statistics
     df = clean_player_stats(player_stats)
 
+    # Save cleaned data
     save_cleaned_data(df)
 
-    print("\nCleaned DataFrame:")
-    print(df.head())
-
-    print(f"\nTotal rows: {len(df)}")
-
-
-    print("\nCleaned DataFrame:")
-    print(df.head())
-
+    # Display summary
     print(f"\nTotal cleaned rows: {len(df)}")
     print(f"Unique players: {df['player_id'].nunique()}")
     print(f"Unique games: {df['game_id'].nunique()}")
 
-    print("\nSample minutes values:")
-    print(df["min"].value_counts().head(15))
-
-    print("\nInvalid minutes after conversion:")
-    print(df["min"].isna().sum())
+    print("\nData cleaning completed successfully!")
 
 
 if __name__ == "__main__":
+    main()
     main()

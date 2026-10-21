@@ -34,6 +34,10 @@ yarn-error.log*
 #Except Example
 !.env.example
 
+# NBA datasets
+ml/data/raw/
+ml/data/processed/
+
 # vercel
 .vercel
 
