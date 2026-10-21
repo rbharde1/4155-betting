@@ -1,7 +1,17 @@
 import os
+import json
+import time
+from pathlib import Path
+
 import requests
 from dotenv import load_dotenv
 
+
+# ==========================================
+# 1. API CONFIGURATION
+# ==========================================
+
+# Load API key from .env.local
 load_dotenv(".env.local")
 
 API_KEY = os.getenv("BALLDONTLIE_API_KEY")
@@ -9,37 +19,126 @@ API_KEY = os.getenv("BALLDONTLIE_API_KEY")
 if not API_KEY:
     raise ValueError("BALLDONTLIE_API_KEY was not found in .env.local")
 
+BASE_URL = "https://api.balldontlie.io/nba/v1"
 
-
-url = "https://api.balldontlie.io"
-
-headers = {
+HEADERS = {
     "Authorization": API_KEY
 }
 
-game_id = 18447166
+# NBA seasons to collect
+SEASONS = [2024, 2025]
 
-response = requests.get(
-    f"{url}/nba/v1/stats",
-    headers=headers,
-    params={"game_ids[]": game_id},
-)
-
-response.raise_for_status()
-
-data = response.json()
+# Folder for storing raw API data
+RAW_DATA_DIR = Path(__file__).resolve().parent / "data" / "raw"
 
 
+# ==========================================
+# 2. FETCH NBA GAMES
+# ==========================================
 
-print(f"Player stats for game {game_id}:\n")
+def get_games():
+    """
+    Retrieve all regular-season NBA games
+    from the 2024-25 and 2025-26 seasons.
+    """
 
-players = sorted(data["data"], key=lambda x: x["pts"], reverse=True)
+    games = []
+    cursor = None
 
-for stat in players[:20]:
-    player = stat["player"]
-    team = stat["team"]["abbreviation"]
-    print(f"{player['first_name']} {player['last_name']} ({team}): "
-          f"{stat['pts']} pts, {stat['reb']} reb, {stat['ast']} ast")
+    while True:
+
+        # API request parameters
+        params = {
+            "seasons[]": SEASONS,
+            "postseason": "false",
+            "per_page": 100
+        }
+
+        # Continue from the previous page
+        if cursor is not None:
+            params["cursor"] = cursor
+
+        # Request game data
+        response = requests.get(
+            f"{BASE_URL}/games",
+            headers=HEADERS,
+            params=params,
+            timeout=30
+        )
+
+        # Check for unsuccessful requests
+        response.raise_for_status()
+
+        # Convert response to Python dictionary
+        data = response.json()
+
+        # Add games from this page
+        games.extend(data["data"])
+
+        print(f"Games collected: {len(games)}")
+
+        # Find the next page
+        cursor = data.get("meta", {}).get("next_cursor")
+
+        # Stop when no more pages exist
+        if cursor is None:
+            break
+
+        # Small delay between requests
+        time.sleep(0.5)
+
+    return games
 
 
+# ==========================================
+# 3. SAVE DATA
+# ==========================================
 
+def save_json(data, filename):
+    """
+    Save API data to a JSON file.
+    """
+
+    # Create folder if it doesn't exist
+    RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    file_path = RAW_DATA_DIR / filename
+
+    with open(file_path, "w", encoding="utf-8") as file:
+        json.dump(data, file, indent=2)
+
+    print(f"\nData saved to: {file_path}")
+
+
+# ==========================================
+# 4. MAIN PROGRAM
+# ==========================================
+
+def main():
+
+    print("Fetching NBA games from 2024-25 and 2025-26...\n")
+
+    # Retrieve all games
+    games = get_games()
+
+    # Display total games collected
+    print(f"\nTotal games collected: {len(games)}")
+
+    # Display first five games
+    print("\nFirst five games:")
+
+    for game in games[:5]:
+        print(
+            game["id"],
+            game["date"],
+            game["visitor_team"]["abbreviation"],
+            "vs",
+            game["home_team"]["abbreviation"]
+        )
+
+    # Save raw game data
+    save_json(games, "nba_games_2024_2026.json")
+
+
+if __name__ == "__main__":
+    main()
