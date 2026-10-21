@@ -16,7 +16,6 @@ def load_cleaned_stats():
     df["date"] = pd.to_datetime(df["date"])
     return df
 
-
 def calculate_rolling_avg(df):
     """
     Calculate historical rolling averages for NBA players.
@@ -50,7 +49,6 @@ def save_features(df):
 
     print(f"\nEngineered features saved to: {FEATURES_FILE}")
     print(f"Total saved records: {len(df)}")
-
 
 def main():
 

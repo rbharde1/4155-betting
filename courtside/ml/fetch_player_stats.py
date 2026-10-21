@@ -41,27 +41,71 @@ def load_game_ids():
 
     return game_ids
 
+def make_api_request(url, params):
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(
+                url,
+                headers=HEADERS,
+                params=params,
+                timeout=30
+            )
+            # Handle rate limiting
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
+                if retry_after and retry_after.isdigit():
+                    wait_time = int(retry_after)
+                else:
+                    wait_time = min(60, 2 ** (attempt + 1))
+                print(f"Rate limit reached. Waiting {wait_time} seconds...")
+                time.sleep(wait_time)
+                continue
+            response.raise_for_status()
+            return response.json()
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError) as error:
+            wait_time = min(60, 2 ** (attempt + 1))
+            print(f"Temporary API error: {error}")
+            print(f"Retrying in {wait_time} seconds...")
+            time.sleep(wait_time)
+
+    raise requests.exceptions.RequestException(
+        f"API request failed after {max_retries} attempts."
+    )          
 
 def get_player_stats(game_id):
     """
     Retrieve player statistics for a single NBA game.
     """
 
-    response = requests.get(
-        f"{BASE_URL}/stats",
-        headers=HEADERS,
-        params={
+    all_stats = []
+    cursor = None 
+
+    while True:
+        params = {
             "game_ids[]": game_id,
             "per_page":100
-        },
-        timeout=30,
-    )
+        }
 
-    response.raise_for_status()
+        if cursor is not None:
+            params["cursor"] = cursor
 
-    data = response.json()
+        data = make_api_request(
+            f"{BASE_URL}/stats",
+            params      
+        )
 
-    return data["data"]
+        # Collect statistics from current page
+        all_stats.extend(data.get("data", []))
+
+        # Check whether another page exists
+        cursor = data.get("meta", {}).get("next_cursor")
+
+        if cursor is None:
+            break
+
+    return all_stats
 
 def collect_all_player_stats(game_ids):
     """
@@ -130,23 +174,16 @@ def collect_all_player_stats(game_ids):
 
     return all_stats
 
-
-
-
-
-    
-
-
 def main():
 
-    # Load all game IDs from our JSON file
+    # Load all game IDs
     game_ids = load_game_ids()
 
     print(f"Total game IDs loaded: {len(game_ids)}")
 
     print("\nStarting player statistics collection...\n")
 
-    # Retrieve player statistics for all games
+    # Retrieve statistics for all games
     all_stats = collect_all_player_stats(game_ids)
 
     # Display total records collected
