@@ -89,6 +89,46 @@ def get_games():
 
     return games
 
+def get_games_by_date(date):
+    """
+    Retrieve NBA games for a specific date.
+    Example: 2026-10-21
+    """
+
+    games = []
+    cursor = None
+
+    while True:
+
+        params = {
+            "dates[]": [date],
+            "per_page": 100
+        }
+
+        if cursor is not None:
+            params["cursor"] = cursor
+
+        response = requests.get(
+            f"{BASE_URL}/games",
+            headers=HEADERS,
+            params=params,
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+        games.extend(data["data"])
+
+        cursor = data.get("meta", {}).get("next_cursor")
+
+        if cursor is None:
+            break
+
+        time.sleep(0.5)
+
+    return games
+
 
 # ==========================================
 # 3. SAVE DATA
@@ -115,19 +155,19 @@ def save_json(data, filename):
 # ==========================================
 
 def main():
+    date = "2026-10-21"
+    print(f"\nFetching NBA games for {date}...")
+    games = get_games_by_date(date)
+    print(f"Found {len(games)} games")
 
-    # Fetch NBA games
-    print("\nFetching NBA games from 2024-25 and 2025-26...")
-    games = get_games()
+    if not games:
+        print("No games found.")
+        return
 
-    # Display total games collected
-    print(f"\nTotal games collected: {len(games)}")
-
-    # Save raw game data
-    save_json(games, "nba_games_2024_2026.json")
-
+    filename = f"nba_games_{date}.json"
+    save_json(games, filename)
     print("\nNBA game collection completed successfully!")
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     main()

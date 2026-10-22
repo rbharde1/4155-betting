@@ -316,38 +316,64 @@ def calculate_upcoming_opponent_defense(historical_df, upcoming_df):
 
     return upcoming_df
 
+
+def round_to_half(value):
+    """Round projections to the nearest 0.5."""
+    return np.floor(np.asarray(value) * 2 + 0.5) / 2
+
+
+def generate_prop_line(projection):
+    """Generate a synthetic half-point betting line."""
+    return np.floor(np.asarray(projection)) + 0.5
+
 def generate_prop_predictions(models, upcoming_features):
     predictions = upcoming_features.copy()
     for target in ["pts", "pr", "pra"]:
-        # Load model bundles
+
+        # Load trained models
         linear_bundle = models[target]["linear"]
         logistic_bundle = models[target]["logistic"]
         linear_model = linear_bundle["model"]
         logistic_model = logistic_bundle["model"]
-        # Use the exact features from training
+
+        # Use exact training features
         linear_features = linear_bundle["features"]
         logistic_features = logistic_bundle["features"]
-        # Predict player statistics
-        projected_stats = linear_model.predict(
+
+        # Generate raw player projections
+        raw_projections = linear_model.predict(
             predictions[linear_features]
         )
-        # Statistics cannot be negative
-        projected_stats = np.maximum(projected_stats, 0)
-        # Generate our own half-point lines
-        prop_lines = np.floor(projected_stats) + 0.5
-        predictions[f"{target}_projection"] = projected_stats
+
+        # Prevent negative predictions
+        raw_projections = np.maximum(raw_projections, 0)
+
+        # Round displayed projections to nearest 0.5
+        rounded_projections = round_to_half(raw_projections)
+
+        # Generate synthetic betting lines
+        prop_lines = generate_prop_line(raw_projections)
+
+        # Save projections and lines
+        predictions[f"{target}_projection"] = rounded_projections
         predictions[f"{target}_line"] = prop_lines
+
         # Prepare logistic regression inputs
         logistic_inputs = predictions[
             [col for col in logistic_features if col != "prop_line"]
         ].copy()
+
+        # Add generated betting lines
         logistic_inputs["prop_line"] = prop_lines
-        # Restore the exact training column order
+        # Restore exact training feature order
         logistic_inputs = logistic_inputs[logistic_features]
-        # Calculate probability of going over
+
+        # Calculate OVER probabilities
         over_probabilities = logistic_model.predict_proba(
             logistic_inputs
         )[:, 1]
+
+        # Save OVER and UNDER probabilities
         predictions[f"{target}_over_prob"] = over_probabilities
         predictions[f"{target}_under_prob"] = (
             1 - over_probabilities

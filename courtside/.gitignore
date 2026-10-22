@@ -36,7 +36,13 @@ yarn-error.log*
 
 # NBA datasets
 ml/data/raw/
-ml/data/processed/
+
+# Ignore processed datasets except predictions
+ml/data/processed/*
+!ml/data/processed/nba_prop_predictions.csv
+
+# Trained models
+ml/models/
 
 # vercel
 .vercel
