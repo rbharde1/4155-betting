@@ -120,4 +120,17 @@
 .prop-ticket { display: grid; gap: 12px; padding: 18px; background: #1c2922; border: 1px solid #3e5d47; border-radius: 10px; }
 .prop-ticket label,.prop-ticket p { font-size: 12px; }
 @media(max-width:480px) { .player-props-dialog { padding: 18px; } .prop-row { grid-template-columns: minmax(0,1fr) 70px 70px; gap: 8px; } .prop-row strong { font-size: 12px; } }
+
+.social-feed{display:grid;gap:12px}
+.social-item{display:flex;gap:14px;border:1px solid #2e372c;background:#171c18;border-radius:8px;padding:16px 18px}
+.social-item.mine{border-color:#43542f;background:#1b2318}
+.social-tag{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border-radius:50%;background:#26321e;color:#c3f56b;font-size:10px;font-weight:800;letter-spacing:.5px}
+.social-body{flex:1;min-width:0}
+.social-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.social-top strong{font-size:11px;color:#b9c7ae;letter-spacing:.4px;font-weight:600}
+.social-item h3{font-size:14px;font-weight:600;margin:9px 0 6px;color:#e4efd9;letter-spacing:-.2px}
+.social-item h3 span{color:#c3f56b;font-size:12px;margin-left:8px}
+.social-body>small{display:block;font-size:10px;color:#8d9d7d;letter-spacing:.3px}
+.social-foot{display:flex;flex-wrap:wrap;gap:16px;margin-top:13px;padding-top:12px;border-top:1px solid #2a3326;font-size:10px;color:#94a484}
+@media(max-width:600px){.social-item{padding:14px;gap:10px}.social-foot{gap:10px}}
 .team-monogram img{width:70%;height:70%;object-fit:contain;display:block}
