@@ -34,12 +34,15 @@ export async function settle(mode:string,owner:string){
  }
  return count;
 }
+async function fanTag(id:string){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(id));return Array.from(new Uint8Array(digest)).slice(0,3).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase();}
 export async function state(mode:string,owner:string){
  const rows=await db().prepare('SELECT * FROM picks WHERE owner=? AND mode=? ORDER BY created_at DESC').bind(owner,mode).all<any>();const history=rows.results;
  const balance=100000+history.reduce((s,p)=>s+(p.result==='pending'?-p.stake_cents:p.result==='won'?p.profit_cents:p.result==='lost'?-p.stake_cents:0),0);
  const settled=history.filter(p=>p.result==='won'||p.result==='lost');const net=settled.reduce((s,p)=>s+(p.result==='won'?p.profit_cents:-p.stake_cents),0),risked=settled.reduce((s,p)=>s+p.stake_cents,0);
  const sentiment=await db().prepare("SELECT game_id,market,side,COUNT(*) AS count FROM picks WHERE mode=? AND market IN ('moneyline','spread','total') GROUP BY game_id,market,side").bind(mode).all();
  const leaders=await db().prepare("SELECT owner,COUNT(*) AS picks,SUM(CASE WHEN result='won' THEN 1 ELSE 0 END) AS wins,SUM(CASE WHEN result='lost' THEN 1 ELSE 0 END) AS losses,SUM(CASE WHEN result='won' THEN profit_cents WHEN result='lost' THEN -stake_cents ELSE 0 END) AS net FROM picks WHERE mode=? GROUP BY owner ORDER BY net DESC LIMIT 20").bind(mode).all<any>();
- const community=await Promise.all(leaders.results.map(async ({owner:id,...p})=>{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(id));const tag=Array.from(new Uint8Array(digest)).slice(0,3).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase();return {...p,name:id===owner?'You':`Fan ${tag}`};}));
- return {history:history.map(({owner,legs,...p})=>({...p,legs:legs?JSON.parse(legs):null})),balance:balance/100,wins:settled.filter(p=>p.result==='won').length,losses:settled.filter(p=>p.result==='lost').length,pending:history.filter(p=>p.result==='pending').length,roi:risked?net/risked*100:null,sentiment:sentiment.results,community};
+ const community=await Promise.all(leaders.results.map(async ({owner:id,...p})=>({...p,name:id===owner?'You':`Fan ${await fanTag(id)}`})));
+ const feedRows=await db().prepare("SELECT id,owner,matchup,label,market,odds,stake_cents,profit_cents,result,created_at,legs FROM picks WHERE mode=? ORDER BY created_at DESC LIMIT 40").bind(mode).all<any>();
+ const feed=await Promise.all(feedRows.results.map(async ({owner:id,legs,...p})=>({...p,legs:legs?JSON.parse(legs):null,mine:id===owner,name:id===owner?'You':`Fan ${await fanTag(id)}`})));
+ return {history:history.map(({owner,legs,...p})=>({...p,legs:legs?JSON.parse(legs):null})),balance:balance/100,wins:settled.filter(p=>p.result==='won').length,losses:settled.filter(p=>p.result==='lost').length,pending:history.filter(p=>p.result==='pending').length,roi:risked?net/risked*100:null,sentiment:sentiment.results,community,feed};
 }
