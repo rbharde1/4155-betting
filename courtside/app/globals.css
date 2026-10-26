@@ -133,3 +133,4 @@
 .social-body>small{display:block;font-size:10px;color:#8d9d7d;letter-spacing:.3px}
 .social-foot{display:flex;flex-wrap:wrap;gap:16px;margin-top:13px;padding-top:12px;border-top:1px solid #2a3326;font-size:10px;color:#94a484}
 @media(max-width:600px){.social-item{padding:14px;gap:10px}.social-foot{gap:10px}}
+.team-monogram img{width:70%;height:70%;object-fit:contain;display:block}
