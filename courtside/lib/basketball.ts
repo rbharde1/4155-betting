@@ -6,6 +6,8 @@ export const games:Game[]=[
  {id:'demo-den-okc',away:'Denver Nuggets',home:'Oklahoma City Thunder',awayCode:'DEN',homeCode:'OKC',awayColor:'#eac97c',homeColor:'#7bc5ec',time:'8:00 PM',spread:-6.5,total:228.5,awayOdds:210,homeOdds:-250},
  {id:'demo-mil-cle',away:'Milwaukee Bucks',home:'Cleveland Cavaliers',awayCode:'MIL',homeCode:'CLE',awayColor:'#85b8a0',homeColor:'#d28799',time:'7:00 PM',spread:-5.5,total:221.5,awayOdds:180,homeOdds:-215}
 ];
+const logoSlugs:Record<string,string>={GSW:'gs',NYK:'ny',NOP:'no',SAS:'sa',PHO:'phx',WAS:'wsh',BRK:'bkn',CHO:'cha',UTA:'utah'};
+export const teamLogo=(code:string)=>`https://a.espncdn.com/i/teamlogos/nba/500/${logoSlugs[code.toUpperCase()]??code.toLowerCase()}.png`;
 export const signed=(n:number)=>n>0?'+'+n:String(n);
 export function quote(g:Game,market:Market,side:number){
  const team=side===0?g.awayCode:g.homeCode;

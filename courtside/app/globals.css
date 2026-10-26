@@ -120,3 +120,4 @@
 .prop-ticket { display: grid; gap: 12px; padding: 18px; background: #1c2922; border: 1px solid #3e5d47; border-radius: 10px; }
 .prop-ticket label,.prop-ticket p { font-size: 12px; }
 @media(max-width:480px) { .player-props-dialog { padding: 18px; } .prop-row { grid-template-columns: minmax(0,1fr) 70px 70px; gap: 8px; } .prop-row strong { font-size: 12px; } }
+.team-monogram img{width:70%;height:70%;object-fit:contain;display:block}
