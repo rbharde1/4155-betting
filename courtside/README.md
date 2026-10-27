@@ -1,3 +1,5 @@
+> Practice mode has been retired from the app. The dashboard uses real matchups only; demo submissions and simulated settlement are disabled. Existing practice records are retained in storage but are not displayed. Older demo integration scripts below describe the retired mode and should not be run against the current app.
+
 # Courtside — NBA Paper Picks
 
 A private, responsive NBA paper-prediction app with moneyline, spread, and total markets. No deposits, real-money wagering, or prizes.
@@ -70,3 +72,17 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 Live odds are re-fetched on submission; changed lines are rejected. Games are matched by scheduled date and both team abbreviations because ESPN and BALLDONTLIE IDs differ. Player stats settle only after the provider reports a final game. Live provider behavior requires verification with an entitled API key; missing credentials never substitute practice odds.
 
 Checks: `node tools/check_domain.mjs`, `npx tsc --noEmit`, `npm run build`. `python3 tools/check_player_props.py` additionally tests a running local preview with an empty practice record and writes `/private/tmp/courtside-prop-cleanup.sql` to remove only its generated test picks afterward.
+
+### CSV model predictions (no API key)
+
+Real game cards now default to **Model predictions**, with **PTS**, **PR** (points + rebounds), and **PRA** (points + rebounds + assists). The panel displays projection, model-generated line, and over/under probability from `ml/data/processed/nba_prop_predictions.csv`. Users can select Over or Under on any generated PTS/PR/PRA line. Both sides use fixed **-110 Courtside paper odds**, separate from the displayed model probabilities. Existing sportsbook-backed picks remain under **Paper markets**.
+
+`/api/model-props?gameId=<ESPN event ID>` matches CSV rows by Eastern game date, home/away orientation, and both teams' BALLDONTLIE IDs. It never assumes ESPN event IDs equal BALLDONTLIE IDs or reuses an old game's predictions. Invalid rows are excluded; unavailable matches have an empty state. Team/roster data is displayed as supplied by the CSV, without independently validating active rosters or model calibration.
+
+Vite bundles the CSV into the server through a raw import, so no API key or runtime filesystem is needed to read model predictions. Replace the CSV and rebuild/redeploy to publish updated predictions. In development Vite reloads the imported data. The existing game board still uses ESPN to supply matchups. The model integration does not rerun or alter the Python training pipeline.
+
+Model picks share the live-mode paper bankroll and appear in history and the Social feed. The server verifies the current CSV line and pregame status, reserves stakes atomically, and prevents repeat picks for the same player/model market/game. Snapshots preserve the original line and model probabilities. Final ESPN box scores settle PTS, PTS+REB, and PTS+REB+AST, including overtime. Exact ties push, cancelled games and explicitly confirmed DNPs void, and missing/ambiguous players or stats remain pending. Player matching requires a unique normalized full name within the recorded home/away team; provider IDs are not treated as ESPN athlete IDs. No BALLDONTLIE key is needed for model pick submission or ESPN settlement.
+
+### Shared single/parlay slip
+
+There is one slip for all game lines, generated model props, and available sportsbook player props. One selection submits a single through its existing endpoint; 2–6 selections submit a parlay. Selecting the same side again removes it; selecting the opposite side replaces it. The API independently rejects duplicate or opposite sides for the same game/player/stat, including PTS versus sportsbook points. Same-game combinations are allowed with explicitly labeled multiplied paper odds; correlations are not priced. Model legs retain -110 odds and immutable prediction snapshots, and settle against ESPN player statistics. Pushes/voids remove a leg and recalculate the return.

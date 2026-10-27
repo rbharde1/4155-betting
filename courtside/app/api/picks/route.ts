@@ -2,12 +2,12 @@ import {db,user,state,settle,sameOrigin} from '@/lib/store';
 import {games,quote,profit,Market} from '@/lib/basketball';
 import {liveBoard} from '@/lib/espn';
 export const dynamic='force-dynamic';
-export async function GET(request:Request){try{const owner=await user();const mode=new URL(request.url).searchParams.get('mode')==='demo'?'demo':'live';if(mode==='live')await settle(mode,owner);return Response.json(await state(mode,owner),{headers:{'Cache-Control':'no-store'}});}catch(e){return Response.json({error:(e as Error).message},{status:503});}}
+export async function GET(request:Request){try{const owner=await user();const mode='live';if(mode==='live')await settle(mode,owner);return Response.json(await state(mode,owner),{headers:{'Cache-Control':'no-store'}});}catch(e){return Response.json({error:(e as Error).message},{status:503});}}
 export async function POST(request:Request){
  if(!sameOrigin(request))return Response.json({error:'Invalid request origin.'},{status:403});
  try{
  const owner=await user();const b:any=await request.json();
- if(!['live','demo'].includes(b.mode)||!['moneyline','spread','total'].includes(b.market)||![0,1].includes(b.side)||typeof b.stake!=='number'||!Number.isFinite(b.stake)||b.stake<1||b.stake>1000||Math.abs(b.stake*100-Math.round(b.stake*100))>0.00001||typeof b.id!=='string'||!/^[\w-]{16,64}$/.test(b.id))return Response.json({error:'Choose a valid pick and a stake from 1 to 1,000 paper points, with at most two decimals.'},{status:400});
+ if(!['live'].includes(b.mode)||!['moneyline','spread','total'].includes(b.market)||![0,1].includes(b.side)||typeof b.stake!=='number'||!Number.isFinite(b.stake)||b.stake<1||b.stake>1000||Math.abs(b.stake*100-Math.round(b.stake*100))>0.00001||typeof b.id!=='string'||!/^[\w-]{16,64}$/.test(b.id))return Response.json({error:'Choose a valid pick and a stake from 1 to 1,000 paper points, with at most two decimals.'},{status:400});
  const prior=await db().prepare('SELECT id FROM picks WHERE id=? AND owner=?').bind(b.id,owner).first();if(prior)return Response.json({id:b.id,...await state(b.mode,owner)});
  const list=b.mode==='demo'?games:(await liveBoard()).games;const game=list.find(g=>g.id===b.gameId);if(!game)return Response.json({error:'This game no longer has available pregame lines. Refresh the board.'},{status:409});
  if(b.mode==='live'&&(!game.start||Date.parse(game.start)<=Date.now()||!game.fetchedAt||Date.now()-Date.parse(game.fetchedAt)>120000))return Response.json({error:'This game is locked or its odds are stale. Refresh the board.'},{status:409});

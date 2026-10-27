@@ -1,3 +1,4 @@
+import {fetchModelResult,gradeModelTicket} from './model-settlement';
 import {propResult} from './bdl';
 import {gradeParlay,ParlayLeg} from './parlay';
 import {resultFor} from './grading';
@@ -10,6 +11,7 @@ export function sameOrigin(request:Request){const origin=request.headers.get('or
 
 export async function settle(mode:string,owner:string){
  const pending=await db().prepare("SELECT * FROM picks WHERE owner=? AND mode=? AND (result='pending' OR (market='parlay' AND result='lost' AND legs LIKE '%\"result\":\"pending\"%')) ORDER BY created_at LIMIT 100").bind(owner,mode).all<any>();let count=0;
+ const modelScores=new Map<string,any>();
  const scores=new Map<string,Awaited<ReturnType<typeof finalScore>>>();
  async function getScore(id:string,start:string){
   if(mode==='live'&&Date.parse(start)>Date.now())return null;
@@ -19,10 +21,12 @@ export async function settle(mode:string,owner:string){
  }
  for(const p of pending.results){
   if(p.player_prop){
-   try{const final=await propResult(JSON.parse(p.player_prop),mode,p.side);if(!final)continue;const update=await db().prepare("UPDATE picks SET result=?,score=?,settled_at=? WHERE id=? AND result='pending'").bind(final.result,final.score,new Date().toISOString(),p.id).run();count+=Number(update.meta.changes??0);}catch{/* Unconfirmed player stats stay pending. */}
+   try{const prop=JSON.parse(p.player_prop);let final;if(prop.kind==='model'){if(Date.parse(p.start)>Date.now())continue;if(!modelScores.has(prop.eventId))modelScores.set(prop.eventId,await fetchModelResult(prop.eventId));const data=modelScores.get(prop.eventId);final=data?gradeModelTicket(data,prop,p.side):null;}else final=await propResult(prop,mode,p.side);if(!final)continue;const update=await db().prepare("UPDATE picks SET result=?,score=?,settled_at=? WHERE id=? AND result='pending'").bind(final.result,final.score,new Date().toISOString(),p.id).run();count+=Number(update.meta.changes??0);}catch{/* Unconfirmed player stats stay pending. */}
   }else if(p.market==='parlay'&&p.legs){
    const legs:ParlayLeg[]=JSON.parse(p.legs);
-   for(const leg of legs){if(leg.result!=='pending')continue;const score=await getScore(leg.gameId,leg.start);if(!score)continue;leg.result=score.void?'void':resultFor(leg.market,leg.side,leg.point,score.away,score.home);leg.score=score.void?'Cancelled':`${score.away}–${score.home}`;}
+   for(const leg of legs){if(leg.result!=='pending')continue;
+    if(leg.playerProp){if(Date.parse(leg.start)>Date.now())continue;try{let final;if(leg.playerProp.kind==='model'){if(!modelScores.has(leg.gameId))modelScores.set(leg.gameId,await fetchModelResult(leg.gameId));const data=modelScores.get(leg.gameId);final=data?gradeModelTicket(data,leg.playerProp,leg.side):null;}else final=await propResult(leg.playerProp,mode,leg.side);if(final){leg.result=final.result as ParlayLeg['result'];leg.score=final.score}}catch{/* Keep unconfirmed player legs pending. */}continue;}
+    const score=await getScore(leg.gameId,leg.start);if(!score)continue;leg.result=score.void?'void':resultFor(leg.market,leg.side,leg.point,score.away,score.home);leg.score=score.void?'Cancelled':`${score.away}–${score.home}`;}
    const graded=gradeParlay(p.stake_cents,legs);const serialized=JSON.stringify(legs);
    if(serialized===p.legs&&graded.result==='pending')continue;
    const update=await db().prepare("UPDATE picks SET legs=?,result=?,profit_cents=?,settled_at=? WHERE id=? AND result IN ('pending','lost') AND legs=?").bind(serialized,graded.result,graded.profitCents,graded.result==='pending'?null:p.settled_at??new Date().toISOString(),p.id,p.legs).run();

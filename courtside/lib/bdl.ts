@@ -3,7 +3,7 @@ import type {Game} from './basketball';
 import {normalizeProps,practiceProps,gradeProp,type PlayerProp} from './player-props';
 async function api(path:string){
  const key=(env as unknown as Record<string,string>).BALLDONTLIE_API_KEY;
- if(!key)throw Error('Live player odds are not connected yet. Try Practice to explore player props.');
+ if(!key)throw Error('Sportsbook player odds are not connected yet. Use Model predictions for generated player lines.');
  const r=await fetch(`https://api.balldontlie.io${path}`,{headers:{Authorization:key},signal:AbortSignal.timeout(12000)});
  if(!r.ok)throw Error(r.status===401||r.status===403?'Player odds access is unavailable. The provider account needs player-props access.':r.status===429?'Player odds are busy. Please retry shortly.':'Player odds are temporarily unavailable.');
  return await r.json() as any;

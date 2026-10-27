@@ -4,11 +4,11 @@ import {playerBoard} from '@/lib/bdl';
 import {db,user,state,sameOrigin} from '@/lib/store';
 export const dynamic='force-dynamic';
 async function board(mode:string,id:string){const game=(mode==='demo'?games:(await liveBoard()).games).find(g=>g.id===id);if(!game)throw Error('This game is no longer available for pregame picks.');return {game,...await playerBoard(game,mode)}}
-export async function GET(request:Request){try{const q=new URL(request.url).searchParams;return Response.json(await board(q.get('mode')==='demo'?'demo':'live',q.get('gameId')??''),{headers:{'Cache-Control':'no-store'}})}catch(e){return Response.json({error:(e as Error).message},{status:503,headers:{'Cache-Control':'no-store'}})}}
+export async function GET(request:Request){try{const q=new URL(request.url).searchParams;return Response.json(await board('live',q.get('gameId')??''),{headers:{'Cache-Control':'no-store'}})}catch(e){return Response.json({error:(e as Error).message},{status:503,headers:{'Cache-Control':'no-store'}})}}
 export async function POST(request:Request){
  if(!sameOrigin(request))return Response.json({error:'Invalid request origin.'},{status:403});
  try{const owner=await user();const b:any=await request.json();
- if(!['demo','live'].includes(b.mode)||![0,1].includes(b.side)||typeof b.id!=='string'||!/^[\w-]{16,64}$/.test(b.id)||typeof b.stake!=='number'||!Number.isFinite(b.stake)||b.stake<1||b.stake>1000||Math.abs(b.stake*100-Math.round(b.stake*100))>0.00001)return Response.json({error:'Enter a valid pick and stake from 1 to 1,000 paper points, with at most two decimals.'},{status:400});
+ if(!['live'].includes(b.mode)||![0,1].includes(b.side)||typeof b.id!=='string'||!/^[\w-]{16,64}$/.test(b.id)||typeof b.stake!=='number'||!Number.isFinite(b.stake)||b.stake<1||b.stake>1000||Math.abs(b.stake*100-Math.round(b.stake*100))>0.00001)return Response.json({error:'Enter a valid pick and stake from 1 to 1,000 paper points, with at most two decimals.'},{status:400});
  const prior=await db().prepare('SELECT id FROM picks WHERE id=? AND owner=? AND mode=?').bind(b.id,owner,b.mode).first();if(prior)return Response.json(await state(b.mode,owner));
  const data=await board(b.mode,b.gameId);const p=data.props.find(p=>p.id===b.propId);if(!p||p.line!==b.line||(b.side===0?p.over:p.under)!==b.odds)return Response.json({error:'This player line changed or is unavailable. Refresh and select it again.'},{status:409});
  if(b.mode==='live'&&(!data.game.start||Date.parse(data.game.start)<=Date.now()))return Response.json({error:'The game has started. Player picks are locked.'},{status:409});

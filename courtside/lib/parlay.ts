@@ -1,5 +1,5 @@
 export type LegResult='pending'|'won'|'lost'|'push'|'void';
-export type ParlayLeg={gameId:string;market:string;side:number;label:string;matchup:string;odds:number;point:number|null;source:string;fetchedAt:string;start:string;result:LegResult;score?:string};
+export type ParlayLeg={gameId:string;market:string;side:number;label:string;matchup:string;odds:number;point:number|null;source:string;fetchedAt:string;start:string;result:LegResult;score?:string;kind?:'model'|'player';playerId?:number;playerProp?:any};
 export const decimalOdds=(odds:number)=>1+(odds>0?odds/100:100/-odds);
 export const combinedDecimal=(odds:number[])=>odds.reduce((p,n)=>p*decimalOdds(n),1);
 export function americanOdds(decimal:number){return decimal<=1?0:Math.round(decimal>=2?(decimal-1)*100:-100/(decimal-1));}
