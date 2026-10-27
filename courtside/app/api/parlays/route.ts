@@ -1,3 +1,4 @@
+import {competitionWeek} from '@/lib/weekly';
 import {preferSpread} from '@/lib/selection-rules';
 import csv from '@/ml/data/processed/nba_prop_predictions.csv?raw';
 import {parseModelProps,matchModelGame} from '@/lib/model-props';
@@ -11,7 +12,7 @@ export async function POST(request:Request){
  if(!sameOrigin(request))return Response.json({error:'Invalid request origin.'},{status:403});
  try{
   const owner=await user();const b:any=await request.json();
-  if(!['live'].includes(b.mode)||typeof b.id!=='string'||!/^[\w-]{16,64}$/.test(b.id)||typeof b.stake!=='number'||!Number.isFinite(b.stake)||b.stake<1||b.stake>1000||Math.abs(b.stake*100-Math.round(b.stake*100))>0.00001)return Response.json({error:'Enter a valid paper stake from 1 to 1,000 points with at most two decimals.'},{status:400});
+  if(!['live'].includes(b.mode)||typeof b.id!=='string'||!/^[\w-]{16,64}$/.test(b.id)||typeof b.stake!=='number'||!Number.isFinite(b.stake)||b.stake<1||Math.abs(b.stake*100-Math.round(b.stake*100))>0.00001)return Response.json({error:'Enter a valid paper stake of at least 1 point with at most two decimals.'},{status:400});
   if(!Array.isArray(b.legs)||b.legs.length<2||b.legs.length>6||b.legs.some((l:any)=>!l||typeof l.gameId!=='string'||!(l.kind==='model'?['pts','pr','pra']:l.kind==='player'?['points','assists','rebounds']:['moneyline','spread','total']).includes(l.market)||l.kind!=null&&!['model','player'].includes(l.kind)||l.kind&&!Number.isSafeInteger(l.playerId)||![0,1].includes(l.side)))return Response.json({error:'Choose 2–6 valid legs for your parlay.'},{status:400});
   if(new Set(b.legs.map(marketKey)).size!==b.legs.length)return Response.json({error:'Choose only one side of each player prop or game market. Over and Under of the same prop cannot be combined.'},{status:400});
   if(preferSpread(b.legs).length!==b.legs.length)return Response.json({error:'Keep only the spread for a team; its moneyline and spread cannot be combined.'},{status:400});
@@ -39,7 +40,8 @@ export async function POST(request:Request){
   const cents=Math.round(b.stake*100),odds=legs.map(l=>l.odds),earn=parlayProfitCents(cents,odds);
   if(!Number.isSafeInteger(earn)||earn<0)return Response.json({error:'This combination cannot be priced.'},{status:400});
   const firstStart=legs.map(l=>l.start).sort()[0];
-  const inserted=await db().prepare("INSERT INTO picks (id,owner,game_id,mode,market,side,label,matchup,odds,point,stake_cents,profit_cents,result,source,fetched_at,start,created_at,legs) SELECT ?,?,?,?,'parlay',0,?,?,?,NULL,?,?,'pending',?,?,?,?,? WHERE ? <= 100000 + COALESCE((SELECT SUM(CASE WHEN result='pending' THEN -stake_cents WHEN result='won' THEN profit_cents WHEN result='lost' THEN -stake_cents ELSE 0 END) FROM picks WHERE owner=? AND mode=?),0) AND (?='demo' OR julianday(?)>julianday('now'))").bind(b.id,owner,gameId,b.mode,`${legs.length}-leg parlay`,legs.map(l=>l.label).join(' + '),americanOdds(combinedDecimal(odds)),cents,earn,'Courtside combined paper odds',now,firstStart,now,JSON.stringify(legs),cents,owner,b.mode,b.mode,firstStart).run();
+  const week=competitionWeek(new Date(now));
+ const inserted=await db().prepare("INSERT INTO picks (id,owner,game_id,mode,market,side,label,matchup,odds,point,stake_cents,profit_cents,result,source,fetched_at,start,created_at,legs) SELECT ?,?,?,?,'parlay',0,?,?,?,NULL,?,?,'pending',?,?,?,?,? WHERE ? <= 10000 + COALESCE((SELECT SUM(CASE WHEN result='pending' THEN -stake_cents WHEN result='won' THEN profit_cents WHEN result='lost' THEN -stake_cents ELSE 0 END) FROM picks WHERE owner=? AND mode=? AND created_at>=? AND created_at<?),0) AND (?='demo' OR julianday(?)>julianday('now'))").bind(b.id,owner,gameId,b.mode,`${legs.length}-leg parlay`,legs.map(l=>l.label).join(' + '),americanOdds(combinedDecimal(odds)),cents,earn,'Courtside combined paper odds',now,firstStart,now,JSON.stringify(legs),cents,owner,b.mode,week.start,week.end,b.mode,firstStart).run();
   if(!inserted.meta.changes)return Response.json({error:'Insufficient paper balance or a game has started.'},{status:409});
   return Response.json({id:b.id,...await state(b.mode,owner)},{status:201});
  }catch(e){const message=(e as Error).message;return Response.json({error:message.includes('UNIQUE')?'You already locked this parlay combination.':message.includes('Sign in')?message:'Could not save the parlay. Your selections are kept; please retry.'},{status:message.includes('UNIQUE')?409:503});}

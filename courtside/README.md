@@ -10,10 +10,10 @@ A private, responsive NBA paper-prediction app with moneyline, spread, and total
 - Server-side pick validation, immutable saved lines, one prediction per game/market, start-time lockouts, and atomic paper-bankroll limits.
 - Parlays of 2–6 different games, mixing moneyline, spread, and total. One stake per ticket, combined odds, immutable leg snapshots, and per-leg results in history. Same-game parlays are excluded; selecting another market from a game replaces its leg.
 - Parlay payouts multiply decimal odds and round once to cents. Any loss loses the ticket; pushes/voids remove legs, and an entirely pushed/void ticket refunds the stake. These are Courtside-calculated paper prices, not sportsbook parlay quotes. An identical combination can only be locked once per mode.
-- 1,000 starting paper points. Separate real-line and practice balances and histories.
+- 100 weekly paper points, refreshed Mondays at midnight Eastern; stakes up to the available balance. Lifetime history and stats are retained.
 - Positive/negative American-odds payouts; wins, losses, pushes, and cancelled-game refunds.
-- ESPN final-score settlement on dashboard refresh or “Check final results.” Practice has an explicit simulation button.
-- Community sentiment uses single picks only; standings include single and parlay tickets. No seeded users or invented records.
+- ESPN final-score settlement on dashboard refresh or “Check final results.” Weekly standings require one win or loss.
+- Community sentiment includes singles and parlay game legs, counting each fan once per game, market, and side; player props do not count toward team-market sentiment. Standings include single and parlay tickets. No seeded users or invented records.
 - Sites authenticated identity; private owner-only deployment. Community participation requires deliberately expanding the Site audience later.
 - Figma concept: https://www.figma.com/design/wCojbAlWHztMxETcPocU27
 
@@ -78,3 +78,11 @@ There is one slip for all game lines, generated model props, and available sport
 Player props use NBA CDN headshots with initials for unknown players or failed images. `lib/player-headshots.json` maps BALLDONTLIE IDs from the prediction CSV to NBA IDs by unique normalized full name. Both ID and name are checked before displaying a photo. The mapping covers 689 of the current CSV’s 712 players; new or unmatched players safely show initials until the mapping is updated. No API key is needed for photos.
 
 Identifier source: [nba_api player directory](https://github.com/swar/nba_api/blob/master/src/nba_api/stats/library/data.py), retrieved October 27, 2026. Only matched names and numeric identifiers are included; images load directly from `cdn.nba.com`.
+
+### Weekly competition
+
+Each week runs from Monday midnight to Monday midnight in America/New_York (including daylight-saving changes). Every account receives a fresh 100-point allocation; unused points do not carry over. Tickets cost at least 1 point, up to the available balance, and reserve their stake atomically in the database. All four submission endpoints enforce the limit and current-week balance.
+
+Tickets belong to their placement week. Late results update that original week and lifetime stats, never the new week's balance. The current-week leaderboard ranks net profit among users with at least one won/lost ticket; pushes and voids do not qualify, and parlays count as one ticket. Equal profits share a rank. Existing picks remain in history and count in their original placement week. No reset job or database migration is required.
+
+Checks: `node tools/check_domain.mjs` covers Eastern reset boundaries, DST, and weekly accounting; `python3 tools/check_weekly_sql.py` checks the real endpoint SQL against isolated SQLite databases.

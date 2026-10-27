@@ -86,3 +86,17 @@ assert.equal(ticketType([{gameId:'1'}]),'Single');
 assert.equal(ticketType([{gameId:'1'},{gameId:'1'}]),'SGP');
 assert.equal(ticketType([{gameId:'1'},{gameId:'2'}]),'SGPx');
 console.log('PASS: Single, SGP and SGPx slip headings.');
+const {competitionWeek,weeklySummary}=await module('lib/weekly.ts');
+assert.deepEqual(competitionWeek(new Date('2026-10-26T03:59:59Z')),{start:'2026-10-19T04:00:00.000Z',end:'2026-10-26T04:00:00.000Z'});
+assert.deepEqual(competitionWeek(new Date('2026-10-26T04:00:00Z')),{start:'2026-10-26T04:00:00.000Z',end:'2026-11-02T05:00:00.000Z'});
+assert.deepEqual(competitionWeek(new Date('2026-03-08T12:00:00Z')),{start:'2026-03-02T05:00:00.000Z',end:'2026-03-09T04:00:00.000Z'});
+const week=competitionWeek(new Date('2026-10-27T12:00:00Z'));
+const weeklyTicket=(result,created_at=week.start)=>({result,created_at,stake_cents:1000,profit_cents:909});
+const weekly=weeklySummary([weeklyTicket('won'),weeklyTicket('lost'),weeklyTicket('pending'),weeklyTicket('push'),weeklyTicket('void'),weeklyTicket('won','2026-10-20T12:00:00.000Z')],week);
+assert.equal(weekly.balance,89.09);assert.equal(weekly.net,-.91);assert.equal(weekly.settled,2);assert.equal(weekly.qualified,true);
+assert.equal(weeklySummary(Array.from({length:5},()=>weeklyTicket('won')),week).qualified,true);
+assert.equal(weeklySummary([weeklyTicket('pending'),weeklyTicket('won')],competitionWeek(new Date(week.end))).balance,100);
+console.log('PASS: Eastern Monday reset, DST boundaries, weekly balance, qualification, and old-week settlement isolation.');
+
+assert.equal(weeklySummary([weeklyTicket('push'),weeklyTicket('pending')],week).qualified,false);
+assert.equal(weeklySummary([weeklyTicket('lost')],week).qualified,true);
