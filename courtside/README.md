@@ -1,88 +1,151 @@
-> Practice mode has been retired from the app. The dashboard uses real matchups only; demo submissions and simulated settlement are disabled. Existing practice records are retained in storage but are not displayed. Older demo integration scripts below describe the retired mode and should not be run against the current app.
-
 # Courtside — NBA Paper Picks
 
-A private, responsive NBA paper-prediction app with moneyline, spread, and total markets. No deposits, real-money wagering, or prizes.
+Courtside is a social NBA prediction dashboard. Fans make risk-free paper picks against game lines and model-generated player props, build a lifetime record, and compete on a weekly leaderboard. There are no deposits, real-money wagers, or prizes.
 
-## What works
+## Features
 
-- Real DraftKings lines read from the ESPN NBA odds page, with exact game dates, retrieval timestamps, and per-side prices. The server refreshes its cache after one minute. Source failures disable real-line picking rather than substituting invented odds.
-- Server-side pick validation, immutable saved lines, one prediction per game/market, start-time lockouts, and atomic paper-bankroll limits.
-- Parlays of 2–6 different games, mixing moneyline, spread, and total. One stake per ticket, combined odds, immutable leg snapshots, and per-leg results in history. Same-game parlays are excluded; selecting another market from a game replaces its leg.
-- Parlay payouts multiply decimal odds and round once to cents. Any loss loses the ticket; pushes/voids remove legs, and an entirely pushed/void ticket refunds the stake. These are Courtside-calculated paper prices, not sportsbook parlay quotes. An identical combination can only be locked once per mode.
-- 100 weekly paper points, refreshed Mondays at midnight Eastern; stakes up to the available balance. Lifetime history and stats are retained.
-- Positive/negative American-odds payouts; wins, losses, pushes, and cancelled-game refunds.
-- ESPN final-score settlement on dashboard refresh or “Check final results.” Weekly standings require one win or loss.
-- Community sentiment includes singles and parlay game legs, counting each fan once per game, market, and side; player props do not count toward team-market sentiment. Standings include single and parlay tickets. No seeded users or invented records.
-- Sites authenticated identity; private owner-only deployment. Community participation requires deliberately expanding the Site audience later.
-- Figma concept: https://www.figma.com/design/wCojbAlWHztMxETcPocU27
+### Game markets
 
-## Run locally
-
-Node 22.13+ is required. The app uses React/Vinext and Cloudflare D1 for the hosted experience. Open this project in PyCharm or another IDE.
-
-```sh
-npm ci
-npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_sharp_vargas.sql
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_cynical_jack_power.sql
-npm run dev
-```
-
-Apply each migration only once to a new local database. The development sign-in uses a local preview identity and does not affect hosted user data. Production identity is provided by Sites. Never expose the development server publicly.
-
-## Data boundaries
-
-The ESPN page is a public-page integration, not a contracted sportsbook API. Its markup, availability, and delays can change. Retrieval time is not the sportsbook's last-update time. Quotes are checked against a server snapshot no more than 60 seconds old; clients cannot choose their own odds. A moved quote requires a fresh selection. Suspended/unavailable markets are omitted.
-
-Results include overtime and require ESPN's final status. Cancelled games are voided; postponed or unconfirmed games remain pending. Settlement currently runs when an authenticated user opens or refreshes the dashboard, not as a background scheduler. Practice games are illustrative and never count as real-line results. Audit timestamps are app-recorded, not third-party certification.
-
-WebMCP exposes `stage_paper_pick`, which only stages a selection and never submits it. Keyboard-accessible controls and a mobile navigation drawer are included.
-
-## Validation
-
-Run `npx tsc --noEmit` and `npm run build`. End-to-end API validation covered all three markets, odds tampering rejection, duplicate rejection, invalid stakes, concurrent balance protection, settlement idempotency, persistence, and separation between live and practice. See `tools/check_api.py` and `tools/check_parlay_api.py` (empty local practice database only). `node tools/check_domain.mjs` checks grading, parlay push/void adjustments, and payout rounding. Parlay integration also checks mixed markets, order-independent duplicates, and shared bankroll protection across concurrent single/parlay submissions.
+- Moneyline, spread, and total odds from DraftKings via the ESPN NBA odds page.
+- Game dates, start times, team logos, and odds retrieval timestamps.
+- Picks lock when the game starts. Changed or unavailable lines are rejected on submission.
 
 ### Player props
 
-Click a game card (or focus it and press Enter) to open Points, Assists, and Rebounds over/under markets. Player picks are singles (not parlay legs), share the mode's bankroll, and appear in My predictions. One pick per player/stat/game is allowed, including alternate lines. Exact ties refund the stake. Confirmed zero participation voids a pick; unavailable or unconfirmed statistics remain pending. Practice uses fictional position-based players and deterministic simulated results.
+Click a game card to view generated player predictions:
 
-Live player odds use DraftKings through BALLDONTLIE, independently of the ESPN team-market feed. Copy `.dev.vars.example` to `.dev.vars`, set `BALLDONTLIE_API_KEY` privately with an account that has player-props and stats access, and restart `npm run dev`. Cloudflare loads this as a server-only binding. For deployed environments configure the same name as a Worker secret. Never use a `VITE_` or `NEXT_PUBLIC_` prefix for this key. The Python research script still reads `.env.local`; that file does not configure this Worker binding.
+| Market | Statistic | CSV fields |
+| --- | --- | --- |
+| PTS | Points | `pts_projection`, `pts_line`, `pts_over_prob`, `pts_under_prob` |
+| PR | Points + rebounds | `pr_projection`, `pr_line`, `pr_over_prob`, `pr_under_prob` |
+| PRA | Points + rebounds + assists | `pra_projection`, `pra_line`, `pra_over_prob`, `pra_under_prob` |
 
-Apply the new database migration after building:
+- Predictions are read from `ml/data/processed/nba_prop_predictions.csv`.
+- Users select Over or Under on the generated line. Both sides use **-110 paper odds**; displayed probabilities are model estimates, not payout odds.
+- Players are sorted by highest projection for the selected statistic.
+- Player headshots and team logos appear beside names. Missing headshots fall back to initials.
+- Displaying and submitting generated props does not require a BALLDONTLIE API key.
+- The unused Paper markets tab and practice mode have been removed.
+
+### Shared pick slip
+
+- One selection creates a single; 2–6 selections create a parlay.
+- Game lines and generated player props can be combined.
+- The slip displays **Single**, **SGP** for multiple selections from one game, or **SGPx** for selections across games.
+- Selecting the opposite side of the same prop replaces the previous selection. Both sides cannot appear in one ticket.
+- Selecting a team's moneyline and spread keeps only its spread.
+- Stake buttons add **+1, +2, +5, or +10** points to the current amount. The stake starts empty; pressing +10 twice sets it to 20.
+- Stakes must be at least 1 point, with up to two decimal places, and cannot exceed the available balance. There is no separate per-ticket stake cap.
+- Saved tickets retain their original lines and timestamps and cannot be edited.
+
+Parlay payouts multiply decimal odds and round to cents. These are app-calculated paper payouts, including same-game combinations; they do not account for correlation or represent sportsbook parlay quotes.
+
+### Weekly competition and lifetime records
+
+- Every account gets **100 points each Monday at midnight Eastern** (`America/New_York`). Daylight-saving changes are handled automatically.
+- The balance resets to 100 even when the previous week's balance was higher. Unused points do not carry over.
+- Each ticket belongs to the week it was placed. Late results update that week's results and lifetime stats, not the next week's balance.
+- The weekly leaderboard ranks net profit: winning profit minus losing stakes.
+- **One settled win or loss** qualifies a player. Pushes and voids do not qualify; a parlay counts as one ticket.
+- Equal profits share a rank. The leaderboard displays up to 20 qualified accounts.
+- Lifetime history, wins, losses, profit, and ROI remain available after weekly resets.
+
+### Community
+
+Community sentiment includes game-market selections from both singles and parlays. Each fan counts once per game, market, and side, even if the same selection appears on multiple tickets. Player props do not contribute to moneyline, spread, or total sentiment. These are this app's user selections, not sportsbook betting volume.
+
+The Social feed shows recent submitted tickets. Other users appear under anonymous fan tags.
+
+## Technology
+
+- **Frontend:** React, TypeScript, Tailwind CSS, and shadcn UI components.
+- **App framework:** Vinext with Vite and Next-style routes.
+- **Backend:** TypeScript API routes on Cloudflare Workers.
+- **Database:** Cloudflare D1 / SQLite with Drizzle schema and migrations.
+- **Model pipeline:** Python scripts in `ml/` producing a CSV consumed by the app.
+
+## Run locally
+
+Requires Node.js **22.13 or newer** and npm. Run these commands from the repository root:
 
 ```sh
+cd courtside
+npm ci
+npm run build
+```
+
+For a new local database, apply all three migrations in order:
+
+```sh
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_sharp_vargas.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_cynical_jack_power.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_tense_skrulls.sql
 ```
 
-Live odds are re-fetched on submission; changed lines are rejected. Games are matched by scheduled date and both team abbreviations because ESPN and BALLDONTLIE IDs differ. Player stats settle only after the provider reports a final game. Live provider behavior requires verification with an entitled API key; missing credentials never substitute practice odds.
+Apply each migration only once. Existing checkouts need only migrations they have not already applied. Do not delete `.wrangler/state` unless you intend to erase local records.
 
-Checks: `node tools/check_domain.mjs`, `npx tsc --noEmit`, `npm run build`. `python3 tools/check_player_props.py` additionally tests a running local preview with an empty practice record and writes `/private/tmp/courtside-prop-cleanup.sql` to remove only its generated test picks afterward.
+```sh
+npm run dev
+```
 
-### CSV model predictions (no API key)
+Open the URL printed in the terminal, normally `http://localhost:5173`. The dashboard is at `/dashboard`. If local preview authentication is required, visit `/signin-with-chatgpt?return_to=/dashboard` on the same local server.
 
-Real game cards now default to **Model predictions**, with **PTS**, **PR** (points + rebounds), and **PRA** (points + rebounds + assists). The panel displays projection, model-generated line, and over/under probability from `ml/data/processed/nba_prop_predictions.csv`. Users can select Over or Under on any generated PTS/PR/PRA line. Both sides use fixed **-110 Courtside paper odds**, separate from the displayed model probabilities. Existing sportsbook-backed picks remain under **Paper markets**.
+Local development uses a preview identity rather than independent production user accounts. The existing authentication integration relies on Sites-provided identity in its hosted environment. Publishing under a separate hosting account requires configuring production authentication and database bindings; the development server is not a public deployment.
 
-`/api/model-props?gameId=<ESPN event ID>` matches CSV rows by Eastern game date, home/away orientation, and both teams' BALLDONTLIE IDs. It never assumes ESPN event IDs equal BALLDONTLIE IDs or reuses an old game's predictions. Invalid rows are excluded; unavailable matches have an empty state. Team/roster data is displayed as supplied by the CSV, without independently validating active rosters or model calibration.
+## Prediction data and photos
 
-Vite bundles the CSV into the server through a raw import, so no API key or runtime filesystem is needed to read model predictions. Replace the CSV and rebuild/redeploy to publish updated predictions. In development Vite reloads the imported data. The existing game board still uses ESPN to supply matchups. The model integration does not rerun or alter the Python training pipeline.
+The frontend uses the generated CSV; it does not run the Python training pipeline. Linear models produce projections and logistic models produce over/under probabilities. To update predictions, replace `ml/data/processed/nba_prop_predictions.csv` with the pipeline output, then rebuild and redeploy. Vite reloads the imported CSV during development.
 
-Model picks share the live-mode paper bankroll and appear in history and the Social feed. The server verifies the current CSV line and pregame status, reserves stakes atomically, and prevents repeat picks for the same player/model market/game. Snapshots preserve the original line and model probabilities. Final ESPN box scores settle PTS, PTS+REB, and PTS+REB+AST, including overtime. Exact ties push, cancelled games and explicitly confirmed DNPs void, and missing/ambiguous players or stats remain pending. Player matching requires a unique normalized full name within the recorded home/away team; provider IDs are not treated as ESPN athlete IDs. No BALLDONTLIE key is needed for model pick submission or ESPN settlement.
+Rows are matched to games using Eastern game date, home/away orientation, and team identities. ESPN event IDs and BALLDONTLIE game IDs are not interchangeable. Invalid rows are excluded, and missing matchups show an empty state. Roster labels and model estimates are supplied by the CSV and are not independently verified by the frontend.
 
-### Shared single/parlay slip
+`lib/player-headshots.json` maps CSV player IDs and names to NBA IDs. Its initial mapping covers 689 of 712 CSV players. New or unmatched players show initials until the mapping is updated. Photos load from the NBA CDN; both ID and name are checked before selecting a photo.
 
-There is one slip for all game lines, generated model props, and available sportsbook player props. One selection submits a single through its existing endpoint; 2–6 selections submit a parlay. Selecting the same side again removes it; selecting the opposite side replaces it. The API independently rejects duplicate or opposite sides for the same game/player/stat, including PTS versus sportsbook points. Same-game combinations are allowed with explicitly labeled multiplied paper odds; correlations are not priced. Model legs retain -110 odds and immutable prediction snapshots, and settle against ESPN player statistics. Pushes/voids remove a leg and recalculate the return.
+Identifier source: [nba_api player directory](https://github.com/swar/nba_api/blob/master/src/nba_api/stats/library/data.py), retrieved October 27, 2026.
 
-### Player headshots
+Legacy sportsbook-prop backend support remains for compatibility with existing records. Its BALLDONTLIE credentials are separate from the generated CSV workflow. If needed, configure `BALLDONTLIE_API_KEY` privately using `.dev.vars.example` as a template. Never commit credentials or put them in client-visible environment variables.
 
-Player props use NBA CDN headshots with initials for unknown players or failed images. `lib/player-headshots.json` maps BALLDONTLIE IDs from the prediction CSV to NBA IDs by unique normalized full name. Both ID and name are checked before displaying a photo. The mapping covers 689 of the current CSV’s 712 players; new or unmatched players safely show initials until the mapping is updated. No API key is needed for photos.
+## Settlement
 
-Identifier source: [nba_api player directory](https://github.com/swar/nba_api/blob/master/src/nba_api/stats/library/data.py), retrieved October 27, 2026. Only matched names and numeric identifiers are included; images load directly from `cdn.nba.com`.
+- Game picks use ESPN final scores; generated props use ESPN final player box scores. Overtime counts.
+- Wins earn the stored profit; losses consume the stake.
+- Exact ties push, and cancelled games are voided. Confirmed player non-participation voids the corresponding prop.
+- Missing or ambiguous player results remain pending.
+- Any losing parlay leg loses the ticket. Pushes and voids remove legs and recalculate the return; an entirely pushed/void ticket refunds its stake.
+- Settlement runs during authenticated dashboard refreshes and manual result checks, not through a background scheduler.
 
-### Weekly competition
+The ESPN integration reads a public odds page and can be affected by source changes or delays. Odds are cached for one minute; live submissions reject snapshots older than two minutes. Retrieval timestamps are not sportsbook update timestamps. Prediction records are app-maintained, not third-party certification.
 
-Each week runs from Monday midnight to Monday midnight in America/New_York (including daylight-saving changes). Every account receives a fresh 100-point allocation; unused points do not carry over. Tickets cost at least 1 point, up to the available balance, and reserve their stake atomically in the database. All four submission endpoints enforce the limit and current-week balance.
+## Checks
 
-Tickets belong to their placement week. Late results update that original week and lifetime stats, never the new week's balance. The current-week leaderboard ranks net profit among users with at least one won/lost ticket; pushes and voids do not qualify, and parlays count as one ticket. Equal profits share a rank. Existing picks remain in history and count in their original placement week. No reset job or database migration is required.
+From `courtside/`:
 
-Checks: `node tools/check_domain.mjs` covers Eastern reset boundaries, DST, and weekly accounting; `python3 tools/check_weekly_sql.py` checks the real endpoint SQL against isolated SQLite databases.
+```sh
+npx tsc --noEmit
+node tools/check_domain.mjs
+python3 tools/check_weekly_sql.py
+python3 tools/check_sentiment.py
+npm run build
+```
+
+These cover grading, payout rounding, CSV matching, selection conflicts, Eastern weekly boundaries and DST, balance guards, leaderboard qualification, and sentiment deduplication. SQLite checks run against isolated in-memory databases.
+
+`tools/check_model_picks.py` and `tools/check_mixed_parlays.py` exercise a running local app and create test tickets. Use a disposable local database and follow their cleanup instructions. Older demo-based API scripts target retired practice behavior and are not current acceptance checks.
+
+## Project layout
+
+```text
+courtside/
+├── app/                 Dashboard, player props, shared slip, API routes
+├── components/ui/       Used UI components
+├── lib/                 Odds, grading, settlement, weekly rules, headshot mapping
+├── db/                  Database schema and connection
+├── drizzle/             SQL migrations and migration metadata
+├── ml/                  Python model pipeline and generated predictions CSV
+├── tools/               Validation scripts
+├── public/              Static assets
+├── scripts/             Development and build helpers
+├── build/               Required Sites Vite integration
+└── .openai/hosting.json  Hosting configuration used by the build
+```
+
+Keep `build/`, `scripts/`, and `.openai/hosting.json`: the current configuration imports them. Dependencies, build output, local database state, and private environment files are excluded from Git. The unused Kaggle utility and starter examples have been removed.
