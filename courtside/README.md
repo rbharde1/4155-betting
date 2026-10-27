@@ -72,3 +72,9 @@ Model picks share the live-mode paper bankroll and appear in history and the Soc
 ### Shared single/parlay slip
 
 There is one slip for all game lines, generated model props, and available sportsbook player props. One selection submits a single through its existing endpoint; 2–6 selections submit a parlay. Selecting the same side again removes it; selecting the opposite side replaces it. The API independently rejects duplicate or opposite sides for the same game/player/stat, including PTS versus sportsbook points. Same-game combinations are allowed with explicitly labeled multiplied paper odds; correlations are not priced. Model legs retain -110 odds and immutable prediction snapshots, and settle against ESPN player statistics. Pushes/voids remove a leg and recalculate the return.
+
+### Player headshots
+
+Player props use NBA CDN headshots with initials for unknown players or failed images. `lib/player-headshots.json` maps BALLDONTLIE IDs from the prediction CSV to NBA IDs by unique normalized full name. Both ID and name are checked before displaying a photo. The mapping covers 689 of the current CSV’s 712 players; new or unmatched players safely show initials until the mapping is updated. No API key is needed for photos.
+
+Identifier source: [nba_api player directory](https://github.com/swar/nba_api/blob/master/src/nba_api/stats/library/data.py), retrieved October 27, 2026. Only matched names and numeric identifiers are included; images load directly from `cdn.nba.com`.
