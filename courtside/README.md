@@ -31,20 +31,6 @@ npm run dev
 
 Apply each migration only once to a new local database. The development sign-in uses a local preview identity and does not affect hosted user data. Production identity is provided by Sites. Never expose the development server publicly.
 
-## Historical NBA data / Python
-
-The Kaggle dataset is for historical analysis, not current sportsbook odds. It has not been bulk-downloaded or inserted into the live app. The included streaming utility can download its archive and inspect all SQLite tables without loading the dataset into memory:
-
-```sh
-python3 tools/kaggle_history.py --download work/history --report work/history/inventory.json
-# Or inspect an already downloaded database:
-python3 tools/kaggle_history.py --database /path/to/nba.sqlite --report work/history/inventory.json
-```
-
-If Kaggle requires authentication, download through your Kaggle account and use `--database`. No credentials belong in source control.
-
-Attribution: [Wyatt Walsh, NBA Database](https://www.kaggle.com/datasets/wyattowalsh/basketball), CC BY-SA 4.0. Preserve attribution and applicable share-alike requirements when distributing derived data. The app includes no redistributed historical records.
-
 ## Data boundaries
 
 The ESPN page is a public-page integration, not a contracted sportsbook API. Its markup, availability, and delays can change. Retrieval time is not the sportsbook's last-update time. Quotes are checked against a server snapshot no more than 60 seconds old; clients cannot choose their own odds. A moved quote requires a fresh selection. Suspended/unavailable markets are omitted.
