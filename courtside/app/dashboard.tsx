@@ -24,7 +24,7 @@ function TeamMark({code,color}:{code:string;color:string}){
 }
 export default function Dashboard(){
  const [view,setView]=useState('board'),[day,setDay]=useState('');
- const [games,setGames]=useState<Game[]>([]),[record,setRecord]=useState<RecordState>(initial),[stake,setStake]=useState('10');
+ const [games,setGames]=useState<Game[]>([]),[record,setRecord]=useState<RecordState>(initial),[stake,setStake]=useState('');
  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[recordReady,setRecordReady]=useState(false),[feedError,setFeedError]=useState(''),[recordError,setRecordError]=useState(''),[fetchedAt,setFetchedAt]=useState<string|null>(null),[now,setNow]=useState(Date.now());
  const [legs,setLegs]=useState<Selection[]>([]),[parlayId,setParlayId]=useState('');
  const [propGame,setPropGame]=useState<Game|null>(null);
